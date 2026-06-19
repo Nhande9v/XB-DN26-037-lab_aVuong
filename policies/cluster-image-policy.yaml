@@ -7,10 +7,10 @@ spec:
   images:
     - glob: "ghcr.io/nhande9v/w10-api*" 
   authorities:
-    - name: authority-0
-    - key:
-        data: |
-          -----BEGIN PUBLIC KEY-----
-          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5JVjRRE5ZoWZJFUroZg9Ulk1G0Zc
-          UtymXHD4kfqIvn4FsL988RZtUUD7KHr0xpUyJ+LYRL7mEvuAbGknJT/71w==
-          -----END PUBLIC KEY-----
+  - name: authority-0
+    key:
+      data: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5JVjRRE5ZoWZJFUroZg9Ulk1G0Zc
+        UtymXHD4kfqIvn4FsL988RZtUUD7KHr0xpUyJ+LYRL7mEvuAbGknJT/71w==
+        -----END PUBLIC KEY-----
