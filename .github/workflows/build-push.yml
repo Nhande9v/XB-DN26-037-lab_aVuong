@@ -51,7 +51,7 @@ jobs:
 
       # 2. Quét CVE bằng Trivy - Bắn lỗi exit-code 1 nếu dính lỗi HIGH/CRITICAL (Thỏa mãn Nghiệm thu 2.2a)
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.19.0
         with:
           image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:local-scan'
           format: 'table'
