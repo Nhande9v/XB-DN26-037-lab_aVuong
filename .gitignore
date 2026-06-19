@@ -11,3 +11,11 @@ k8s-monitoring/alertmanager-config.yaml
 # OS
 .DS_Store
 gatekeeper/test/
+# Cosign keys
+cosign.key
+cosign.pub
+
+# Các file secret khác
+*.key
+*.pem
+*.pfx

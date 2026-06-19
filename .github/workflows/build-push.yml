@@ -1,4 +1,4 @@
-# Build and push Docker image to GitHub Container Registry
+# .github/workflows/build-push.yml
 name: Build and Push Image
 
 on:
@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write # Bắt buộc cho việc ký OIDC/Cosign nếu cần
 
     steps:
       - name: Checkout repository
@@ -37,6 +38,29 @@ jobs:
           version_format: "${major}.${minor}.${patch}"
           bump_each_commit: false
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 1. Build một bản local tạm thời để chạy test/scan bảo mật
+      - name: Build local image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ./src/api
+          push: false
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:local-scan
+
+      # 2. Quét CVE bằng Trivy - Bắn lỗi exit-code 1 nếu dính lỗi HIGH/CRITICAL (Thỏa mãn Nghiệm thu 2.2a)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:local-scan'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true # Không chặn các lỗi CVE chưa có bản vá từ vendor
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      # 3. Đăng nhập hệ thống quản lý Container Registry khi scan đã Pass
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -54,6 +78,7 @@ jobs:
             type=raw,value=${{ steps.semver.outputs.version }}
             type=sha,prefix=v${{ steps.semver.outputs.version }}-
 
+      # 4. Push chính thức lên GitHub Packages Registry
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -62,6 +87,22 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # 5. Cài đặt Cosign & thực hiện Ký số bảo vệ Image (Thỏa mãn Nghiệm thu 2.2b)
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Sign the published Docker images
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          echo "$COSIGN_PRIVATE_KEY" > cosign.key
+          # Ký đồng thời tag phiên bản cụ thể và tag SHA định danh gốc
+          cosign sign --key cosign.key --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.semver.outputs.version }}
+          cosign sign --key cosign.key --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ steps.semver.outputs.version }}-${{ github.sha }}
+          rm -f cosign.key
+
+      # 6. Đồng bộ hóa khai báo phiên bản vào GitOps Manifests
       - name: Update rollout.yaml with new version
         run: |
           sed -i "s|image: ghcr.io/.*/w10-api:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.semver.outputs.version }}|g" app-api/rollout.yaml
@@ -75,7 +116,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: bump version to v${{ steps.semver.outputs.version }}"
+            git commit -m "chore: bump version to v${{ steps.semver.outputs.version }} [skip ci]"
             git push
           fi
 
