@@ -14,3 +14,5 @@ spec:
         MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5JVjRRE5ZoWZJFUroZg9Ulk1G0Zc
         UtymXHD4kfqIvn4FsL988RZtUUD7KHr0xpUyJ+LYRL7mEvuAbGknJT/71w==
         -----END PUBLIC KEY-----
+rekor:
+      ignoreTlog: true
